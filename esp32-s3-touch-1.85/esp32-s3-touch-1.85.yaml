@@ -263,13 +263,30 @@ binary_sensor:
     id: touch_button
     touchscreen_id: touch
     x_min: 100
-    x_max: 200
+    x_max: 275
     y_min: 100
-    y_max: 200
+    y_max: 275
     on_press: 
       then:
-        - logger.log: "TPuch Button Pressed"
-    #page_id: home_page_id
+        - logger.log: Touch Button Pressed
+        - if:
+            condition: 
+              - switch.is_on: timer_ringing
+            then:
+              - switch.turn_off: timer_ringing
+        - if:
+            condition:
+              - not:
+                - microphone.is_muted:
+            then:      
+              - if:
+                  condition:
+                    - voice_assistant.is_running
+                  then:
+                    - voice_assistant.stop:
+                  else:
+                    - voice_assistant.start:
+    page_id: idle_page
     #use_raw: true
 
 output:
@@ -1288,29 +1305,18 @@ touchscreen:
   reset_pin: 
     pca9554: ext_io
     number: 0
-  i2c_id: bus_b
+  i2c_id: bus_a
   address: 0x15
   display: main_display
   skip_probe: true
 
   on_touch:
-  - if:
-      condition:
-        - not:
-          - microphone.is_muted:
-      then:      
-        - if:
-            condition:
-              - voice_assistant.is_running
-            then:
-              - voice_assistant.stop:
-            else:
-              - voice_assistant.start:
-#    - lambda: |-
-#          ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
-#              touch.x,
-#              touch.y,
-#              touch.x_raw,
-#              touch.y_raw
-#              );
+    - light.turn_on: led
+    - lambda: |-
+          ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+              touch.x,
+              touch.y,
+              touch.x_raw,
+              touch.y_raw
+              );
 
