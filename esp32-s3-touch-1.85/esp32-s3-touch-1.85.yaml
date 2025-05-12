@@ -1,7 +1,8 @@
----
 substitutions:
-  name: esp32-s3-box
-  friendly_name: ESP32 S3 Box
+  name: esp32-s3-touch
+  friendly_name: esp32-s3-touch
+  ip_address: 10.10.102.111
+  ip_gateway: 10.10.102.1
   loading_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/loading_320_240.png
   idle_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/idle_320_240.png
   listening_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/listening_320_240.png
@@ -16,6 +17,7 @@ substitutions:
   thinking_illustration_background_color: "FFFFFF"
   replying_illustration_background_color: "FFFFFF"
   error_illustration_background_color: "000000"
+  timer_illustration_background_color: "FFFFFF"
 
   voice_assist_idle_phase_id: "1"
   voice_assist_listening_phase_id: "2"
@@ -35,7 +37,7 @@ substitutions:
   # for Greek use "Noto Sans" for other languages use a compatible font family
   font_family: Figtree
 
-  micro_wake_word_model: okay_nabu
+  #micro_wake_word_model: okay_nabu
 
 esphome:
   name: ${name}
@@ -45,7 +47,9 @@ esphome:
   on_boot:
     priority: 600
     then:
+      - delay: 0.4s
       - script.execute: draw_display
+      - component.update: batpercent
       - delay: 30s
       - if:
           condition:
@@ -53,9 +57,11 @@ esphome:
           then:
             - lambda: id(init_in_progress) = false;
             - script.execute: draw_display
+      - pcf85063.read_time
+      - component.update: batpercent
 
 esp32:
-  board: esp32s3box
+  board: esp32-s3-devkitc-1
   flash_size: 16MB
   framework:
     type: esp-idf
@@ -63,12 +69,18 @@ esp32:
       CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
       CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
       CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+      CONFIG_FATFS_LFN_STACK: "y"
+#    advanced: 
+#      enable_idf_experimental_features: true 
 
 psram:
   mode: octal
   speed: 80MHz
 
 api:
+  password: !secret basic_pwd
   on_client_connected:
     - script.execute: draw_display
   on_client_disconnected:
@@ -76,13 +88,30 @@ api:
 
 ota:
   - platform: esphome
+    password: !secret basic_pwd
     id: ota_esphome
-
+    on_begin:
+      then:
+        - logger.log: "OTA started!"
+        - lambda: |-
+            id(ota_active) = true;
+        - script.execute: draw_display
+        - lambda: |-
+            id(main_display).update();
+            
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
 wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: $ip_address
+    gateway: $ip_gateway
+    subnet: 255.255.255.0
   ap:
+    ssid: $friendly_name Hotspot
+    password: !secret basic_pwd
   on_connect:
     - script.execute: draw_display
   on_disconnect:
@@ -90,10 +119,89 @@ wifi:
 
 captive_portal:
 
+time:
+  - platform: pcf85063
+    id: pcf85063_time
+    i2c_id: bus_a
+    # repeated synchronization is not necessary unless the external RTC
+    # is much more accurate than the internal clock
+    update_interval: never
+  - platform: homeassistant
+    # instead try to synchronize via network repeatedly ...
+    on_time_sync:
+      then:
+        # ... and update the RTC when the synchronization was successful
+        pcf85063.write_time:
+
+pca9554:
+  - id: ext_io
+    i2c_id: bus_a
+
 button:
   - platform: factory_reset
     id: factory_reset_btn
     internal: true
+
+number:
+  - platform: template
+    name: Auto Off
+    id: auto_off
+    optimistic: true
+    restore_value: true
+    min_value: -1
+    max_value: 300
+    step: 1
+    unit_of_measurement: s
+    disabled_by_default: true
+    initial_value: 0
+
+sensor:
+  - platform: adc
+    name: "Battery Voltage"
+    attenuation: auto
+    id: batvolt
+    pin: GPIO8
+    accuracy_decimals: 3
+    device_class: "voltage"
+    entity_category: "diagnostic"
+    update_interval: 1s
+    unit_of_measurement: "V"
+    icon: mdi:battery-medium
+    filters:
+      - multiply: 3.09
+      - median:
+          window_size: 7
+          send_every: 7
+          send_first_at: 7
+      - throttle: 15min
+    on_value:
+      then:
+        - component.update: batpercent
+
+  - platform: template
+    name: "Battery level"
+    id: batpercent
+    lambda: return id(batvolt).state;
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    icon: mdi:battery-medium
+    device_class: "battery"
+    entity_category: "diagnostic"
+    filters:
+      - calibrate_linear:
+         method: exact
+         datapoints:
+          - 0.00 -> 0.0
+          - 3.30 -> 1.0
+          - 3.39 -> 10.0
+          - 3.75 -> 50.0
+          - 4.11 -> 90.0
+          - 4.20 -> 100.0
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: false
+
 
 binary_sensor:
   - platform: gpio
@@ -101,22 +209,72 @@ binary_sensor:
       number: GPIO0
       mode: INPUT_PULLUP
       inverted: true
-    id: top_left_button
-    internal: true
+    name: "Boot Button"
     on_multi_click:
       - timing:
-          - ON for at least 50ms
-          - OFF for at least 50ms
+          - ON for at most 500ms
+          - OFF for at least 200ms
         then:
-          - switch.turn_off: timer_ringing
+          - if:
+              condition: 
+                - switch.is_on: timer_ringing
+              then:
+                - switch.turn_off: timer_ringing
+              else: 
+                - if:
+                    condition:
+                      - not:
+                        - microphone.is_muted:
+                    then:      
+                      - if:
+                          condition:
+                            - voice_assistant.is_running
+                          then:
+                            - voice_assistant.stop:
+                          else:
+                            - voice_assistant.start:
+
+      - timing:
+          - ON for at most 500ms
+          - OFF for at most 400ms
+          - ON for at most 500ms
+        then:
+          - if:
+              condition:
+                - microphone.is_muted:
+              then:
+                - microphone.unmute:
+                - globals.set:
+                    id: mic_muted
+                    value: 'false'
+              else:
+                - microphone.mute:
+                - globals.set:
+                    id: mic_muted
+                    value: 'true'
+          - script.execute: draw_display
       - timing:
           - ON for at least 10s
         then:
           - button.press: factory_reset_btn
 
+  - platform: touchscreen
+    name: Touch Button
+    id: touch_button
+    touchscreen_id: touch
+    x_min: 100
+    x_max: 200
+    y_min: 100
+    y_max: 200
+    on_press: 
+      then:
+        - logger.log: "TPuch Button Pressed"
+    #page_id: home_page_id
+    #use_raw: true
+
 output:
   - platform: ledc
-    pin: GPIO45
+    pin: GPIO5
     id: backlight_output
 
 light:
@@ -128,59 +286,65 @@ light:
     output: backlight_output
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 250ms
+    on_turn_on: 
+      then:
+      - if:
+          condition:
+            lambda: 'return id(auto_off).state > 0;'
+          then:
+            - delay: !lambda 'return id(auto_off).state*1000;'
+            - light.turn_off: 
+                id: led
+                transition_length: 10s
 
 i2c:
-  scl: GPIO18
-  sda: GPIO8
+  - id: bus_a
+    scl: GPIO10
+    sda: GPIO11
+    scan: true
+  - id: bus_b
+    scl: GPIO3
+    sda: GPIO1
+    frequency: 400k
+    scan: true
 
 i2s_audio:
-  - id: i2s_audio_bus
-    i2s_lrclk_pin: GPIO47
-    i2s_bclk_pin: GPIO17
-    i2s_mclk_pin: GPIO2
-
-audio_adc:
-  - platform: es7210
-    id: es7210_adc
-    bits_per_sample: 16bit
-    sample_rate: 16000
-
-audio_dac:
-  - platform: es8311
-    id: es8311_dac
-    bits_per_sample: 16bit
-    sample_rate: 48000
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO2
+    i2s_bclk_pin: GPIO15
+  - id: i2s_out
+    i2s_lrclk_pin: GPIO38
+    i2s_bclk_pin: GPIO48
 
 microphone:
   - platform: i2s_audio
-    id: box_mic
+    id: i2s_microphone
+    i2s_audio_id: i2s_in
     sample_rate: 16000
-    i2s_din_pin: GPIO16
+    i2s_din_pin: GPIO39
     bits_per_sample: 16bit
+    pdm: false
+    channel: right
     adc_type: external
 
 speaker:
   - platform: i2s_audio
-    id: box_speaker
-    i2s_dout_pin: GPIO15
+    id: i2s_speaker
+    i2s_dout_pin: GPIO47
     dac_type: external
-    sample_rate: 48000
-    bits_per_sample: 16bit
-    channel: left
-    audio_dac: es8311_dac
-    buffer_duration: 100ms
+    channel: stereo
+    i2s_audio_id: i2s_out
 
 media_player:
   - platform: speaker
     name: None
     id: speaker_media_player
     volume_min: 0.5
-    volume_max: 0.8
+    volume_max: 0.9
     announcement_pipeline:
-      speaker: box_speaker
+      speaker: i2s_speaker
       format: FLAC
       sample_rate: 48000
-      num_channels: 1  # S3 Box only has one output channel
     files:
       - id: timer_finished_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
@@ -203,19 +367,22 @@ media_player:
 
 micro_wake_word:
   models:
-    - ${micro_wake_word_model}
+    - okay_nabu
+    - alexa
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
 voice_assistant:
   id: va
-  microphone: box_mic
+  microphone: i2s_microphone
   media_player: speaker_media_player
-  noise_suppression_level: 2
+  use_wake_word: true
+  noise_suppression_level: 2 #4
   auto_gain: 31dBFS
-  volume_multiplier: 2.0
+  volume_multiplier: 2.0 # 8.0
   on_listening:
+    - logger.log: "VA listening"
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
         id: text_request
@@ -224,21 +391,26 @@ voice_assistant:
         id: text_response
         state: "..."
     - script.execute: draw_display
+    - light.turn_on: led 
   on_stt_vad_end:
+    - logger.log: "VA sta_vlad_end"
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
+    - logger.log: "VA stt_end"
     - text_sensor.template.publish:
         id: text_request
         state: !lambda return x;
     - script.execute: draw_display
   on_tts_start:
+    - logger.log: "VA stt_start"
     - text_sensor.template.publish:
         id: text_response
         state: !lambda return x;
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
     - script.execute: draw_display
   on_end:
+    - logger.log: "VA end"
     - wait_until:
         and:
           - not:
@@ -262,6 +434,7 @@ voice_assistant:
         then:
           - micro_wake_word.start:
   on_error:
+    - logger.log: "VA error"
     - if:
         condition:
           lambda: return !id(init_in_progress);
@@ -278,27 +451,43 @@ voice_assistant:
                 - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
           - script.execute: draw_display
   on_client_connected:
+    - logger.log: "VA connect"
     - lambda: id(init_in_progress) = false;
     - script.execute: start_voice_assistant
     - script.execute: draw_display
   on_client_disconnected:
+    - logger.log: "VA disconnect"
     - script.execute: stop_voice_assistant
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
   on_timer_started:
+    - logger.log: "VA started"
+    - wait_until:
+        media_player.is_announcing:
+    - voice_assistant.stop:
     - script.execute: draw_display
   on_timer_cancelled:
+    - logger.log: "VA timer_cancel"
     - script.execute: draw_display
   on_timer_updated:
+    - logger.log: "VA timer_update"
     - script.execute: draw_display
   on_timer_tick:
-    - script.execute: draw_display
+    - logger.log: "VA timer_tick"
+    - if:
+        condition:
+          not:
+            - voice_assistant.is_running
+        then:
+          - script.execute: draw_display
   on_timer_finished:
+    - logger.log: "VA timer_finish"
     - switch.turn_on: timer_ringing
     - wait_until:
         media_player.is_announcing:
     - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
     - script.execute: draw_display
+    - light.turn_on: led
 
 script:
   - id: draw_display
@@ -318,46 +507,46 @@ script:
                         - lambda: |
                             switch(id(voice_assistant_phase)) {
                               case ${voice_assist_listening_phase_id}:
-                                id(s3_box_lcd).show_page(listening_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(listening_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_thinking_phase_id}:
-                                id(s3_box_lcd).show_page(thinking_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(thinking_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_replying_phase_id}:
-                                id(s3_box_lcd).show_page(replying_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(replying_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_error_phase_id}:
-                                id(s3_box_lcd).show_page(error_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(error_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_muted_phase_id}:
-                                id(s3_box_lcd).show_page(muted_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(muted_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_not_ready_phase_id}:
-                                id(s3_box_lcd).show_page(no_ha_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(no_ha_page);
+                                id(main_display).update();
                                 break;
                               case ${voice_assist_timer_finished_phase_id}:
-                                id(s3_box_lcd).show_page(timer_finished_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(timer_finished_page);
+                                id(main_display).update();
                                 break;
                               default:
-                                id(s3_box_lcd).show_page(idle_page);
-                                id(s3_box_lcd).update();
+                                id(main_display).show_page(idle_page);
+                                id(main_display).update();
                             }
                       else:
                         - display.page.show: no_ha_page
-                        - component.update: s3_box_lcd
+                        - component.update: main_display
                 else:
                   - display.page.show: no_wifi_page
-                  - component.update: s3_box_lcd
+                  - component.update: main_display
           else:
             - display.page.show: initializing_page
-            - component.update: s3_box_lcd
+            - component.update: main_display
 
   - id: fetch_first_active_timer
     then:
@@ -411,17 +600,15 @@ script:
           id(check_if_timers).execute();
           if (id(global_is_timer_active)){
             id(fetch_first_active_timer).execute();
-            int active_pixels = round( 320 * id(global_first_active_timer).seconds_left / max(id(global_first_active_timer).total_seconds , static_cast<uint32_t>(1)) );
+            int active_pixels = round( 100 * id(global_first_active_timer).seconds_left / max(id(global_first_active_timer).total_seconds , static_cast<uint32_t>(1)) );
             if (active_pixels > 0){
-              id(s3_box_lcd).filled_rectangle(0 , 225 , 320 , 15 , Color::WHITE );
-              id(s3_box_lcd).filled_rectangle(0 , 226 , active_pixels , 13 , id(active_timer_color) );
+              id(main_display).filled_gauge(180 , 180 , 165, 175 , active_pixels , id(active_timer_color) );
             }
           } else if (id(global_is_timer)){
             id(fetch_first_timer).execute();
-            int active_pixels = round( 320 * id(global_first_timer).seconds_left / max(id(global_first_timer).total_seconds , static_cast<uint32_t>(1)));
+            int active_pixels = round( 100 * id(global_first_timer).seconds_left / max(id(global_first_timer).total_seconds , static_cast<uint32_t>(1)));
             if (active_pixels > 0){
-              id(s3_box_lcd).filled_rectangle(0 , 225 , 320 , 15 , Color::WHITE );
-              id(s3_box_lcd).filled_rectangle(0 , 226 , active_pixels , 13 , id(paused_timer_color) );
+              id(main_display).filled_gauge(180 , 180 , 165, 175 , active_pixels , id(paused_timer_color) );
             }
           }
   - id: draw_active_timer_widget
@@ -429,8 +616,8 @@ script:
       - lambda: |
           id(check_if_timers_active).execute();
           if (id(global_is_timer_active)){
-            id(s3_box_lcd).filled_rectangle(80 , 40 , 160 , 50 , Color::WHITE );
-            id(s3_box_lcd).rectangle(80 , 40 , 160 , 50 , Color::BLACK );
+            id(main_display).filled_rectangle(100 , 50 , 160 , 50 , Color::WHITE );
+            id(main_display).rectangle(100 , 50 , 160 , 50 , Color::BLACK );
 
             id(fetch_first_active_timer).execute();
             int hours_left = floor(id(global_first_active_timer).seconds_left / 3600);
@@ -446,7 +633,7 @@ script:
             } else {
               display_string = display_minute + ":" + display_seconds;
             }
-            id(s3_box_lcd).printf(120, 47, id(font_timer), Color::BLACK, "%s", display_string.c_str());
+            id(main_display).printf(140, 57, id(font_timer), Color::BLACK, "%s", display_string.c_str());
           }
 
   - id: start_voice_assistant
@@ -488,11 +675,27 @@ script:
 
 switch:
   - platform: gpio
+    pin: GPIO18
+    id: lcd_TE
+  
+  - platform: template
     name: Speaker Enable
-    pin: GPIO46
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
     disabled_by_default: true
+    turn_on_action:
+      - speaker.mute_off:
+      - globals.set:
+          id: speaker_muted
+          value: 'false'
+      - logger.log: "Speaker unmuted"
+    turn_off_action:
+      - speaker.mute_on:
+      - globals.set:
+          id: speaker_muted
+          value: 'true'
+      - logger.log: "Speaker muted"
+
   - platform: template
     name: Mute
     id: mute
@@ -612,6 +815,17 @@ select:
                         - micro_wake_word.start
 
 globals:
+  - id: ota_active
+    type: bool
+    initial_value: 'false'
+  - id: mic_muted
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: speaker_muted
+    type: bool
+    restore_value: no
+    initial_value: 'false'
   - id: init_in_progress
     type: bool
     restore_value: false
@@ -741,30 +955,281 @@ color:
     hex: ${loading_illustration_background_color}
   - id: error_color
     hex: ${error_illustration_background_color}
+  - id: timer_color
+    hex: ${timer_illustration_background_color}
   - id: active_timer_color
     hex: "26ed3a"
   - id: paused_timer_color
     hex: "3b89e3"
+  - id: active_ota_color
+    hex: "ffff00"
+  - id: active_mute_color
+    hex: "ff0000"
 
 spi:
   - id: spi_bus
-    clk_pin: 7
-    mosi_pin: 6
+    clk_pin: GPIO40
+    type: quad
+    data_pins: [GPIO46, GPIO45, GPIO42, GPIO41]
 
 display:
-  - platform: ili9xxx
-    id: s3_box_lcd
-    model: S3BOX
-    invert_colors: false
-    data_rate: 40MHz
-    cs_pin: 5
-    dc_pin: 4
-    reset_pin: 48
+  - platform: qspi_dbi
+    id: main_display
+    model: CUSTOM
+    invert_colors: true
+    data_rate: 80MHz
+    cs_pin: GPIO21
     update_interval: never
+    spi_id: spi_bus
+    color_order: rgb
+    dimensions:
+      height: 360
+      width: 360
+    reset_pin: 
+      pca9554: ext_io
+      number: 1
+    auto_clear_enabled: true #set to false for LVGL    
+    init_sequence:
+      - [ 0xF0, 0x08 ]
+      - [ 0xF2, 0x08 ]
+      - [ 0x9B, 0x51 ]
+      - [ 0x86, 0x53 ]
+      - [ 0xF2, 0x80 ]
+      - [ 0xF0, 0x00 ]
+      - [ 0xF0, 0x01 ]
+      - [ 0xF1, 0x01 ]
+      - [ 0xB0, 0x54 ]
+      - [ 0xB1, 0x3F ]
+      - [ 0xB2, 0x2A ]
+      - [ 0xB4, 0x46 ]
+      - [ 0xB5, 0x34 ]
+      - [ 0xB6, 0xD5 ]
+      - [ 0xB7, 0x30 ]
+      - [ 0xBA, 0x00 ]
+      - [ 0xBB, 0x08 ]
+      - [ 0xBC, 0x08 ]
+      - [ 0xBD, 0x00 ]
+      - [ 0xC0, 0x80 ]
+      - [ 0xC1, 0x10 ]
+      - [ 0xC2, 0x37 ]
+      - [ 0xC3, 0x80 ]
+      - [ 0xC4, 0x10 ]
+      - [ 0xC5, 0x37 ]
+      - [ 0xC6, 0xA9 ]
+      - [ 0xC7, 0x41 ]
+      - [ 0xC8, 0x51 ]
+      - [ 0xC9, 0xA9 ]
+      - [ 0xCA, 0x41 ]
+      - [ 0xCB, 0x51 ]
+      - [ 0xD0, 0x91 ]
+      - [ 0xD1, 0x68 ]
+      - [ 0xD2, 0x69 ]
+      - [ 0xF5, 0x00, 0xA5 ]
+      - [ 0xDD, 0x3F ]
+      - [ 0xDE, 0x3F ]
+      - [ 0xF1, 0x10 ]
+      - [ 0xF0, 0x00 ]
+      - [ 0xF0, 0x02 ]
+      - [ 0xE0, 0xF0, 0x06, 0x0B, 0x09, 0x09, 0x16, 0x32, 0x44, 0x4A, 0x37, 0x13, 0x13, 0x2E, 0x34 ]
+      - [ 0xE1, 0xF0, 0x06, 0x0B, 0x09, 0x08, 0x05, 0x32, 0x33, 0x49, 0x17, 0x13, 0x13, 0x2E, 0x34 ]
+      - [ 0xF0, 0x10 ]
+      - [ 0xF3, 0x10 ]
+      - [ 0xE0, 0x0A ]
+      - [ 0xE1, 0x00 ]
+      - [ 0xE2, 0x00 ]
+      - [ 0xE3, 0x00 ]
+      - [ 0xE4, 0xE0 ]
+      - [ 0xE5, 0x06 ]
+      - [ 0xE6, 0x21 ]
+      - [ 0xE7, 0x00 ]
+      - [ 0xE8, 0x05 ]
+      - [ 0xE9, 0x82 ]
+      - [ 0xEA, 0xDF ]
+      - [ 0xEB, 0x89 ]
+      - [ 0xEC, 0x20 ]
+      - [ 0xED, 0x14 ]
+      - [ 0xEE, 0xFF ]
+      - [ 0xEF, 0x00 ]
+      - [ 0xF8, 0xFF ]
+      - [ 0xF9, 0x00 ]
+      - [ 0xFA, 0x00 ]
+      - [ 0xFB, 0x30 ]
+      - [ 0xFC, 0x00 ]
+      - [ 0xFD, 0x00 ]
+      - [ 0xFE, 0x00 ]
+      - [ 0xFF, 0x00 ]
+      - [ 0x60, 0x42 ]
+      - [ 0x61, 0xE0 ]
+      - [ 0x62, 0x40 ]
+      - [ 0x63, 0x40 ]
+      - [ 0x64, 0x02 ]
+      - [ 0x65, 0x00 ]
+      - [ 0x66, 0x40 ]
+      - [ 0x67, 0x03 ]
+      - [ 0x68, 0x00 ]
+      - [ 0x69, 0x00 ]
+      - [ 0x6A, 0x00 ]
+      - [ 0x6B, 0x00 ]
+      - [ 0x70, 0x42 ]
+      - [ 0x71, 0xE0 ]
+      - [ 0x72, 0x40 ]
+      - [ 0x73, 0x40 ]
+      - [ 0x74, 0x02 ]
+      - [ 0x75, 0x00 ]
+      - [ 0x76, 0x40 ]
+      - [ 0x77, 0x03 ]
+      - [ 0x78, 0x00 ]
+      - [ 0x79, 0x00 ]
+      - [ 0x7A, 0x00 ]
+      - [ 0x7B, 0x00 ]
+      - [ 0x80, 0x48 ]
+      - [ 0x81, 0x00 ]
+      - [ 0x82, 0x05 ]
+      - [ 0x83, 0x02 ]
+      - [ 0x84, 0xDD ]
+      - [ 0x85, 0x00 ]
+      - [ 0x86, 0x00 ]
+      - [ 0x87, 0x00 ]
+      - [ 0x88, 0x48 ]
+      - [ 0x89, 0x00 ]
+      - [ 0x8A, 0x07 ]
+      - [ 0x8B, 0x02 ]
+      - [ 0x8C, 0xDF ]
+      - [ 0x8D, 0x00 ]
+      - [ 0x8E, 0x00 ]
+      - [ 0x8F, 0x00 ]
+      - [ 0x90, 0x48 ]
+      - [ 0x91, 0x00 ]
+      - [ 0x92, 0x09 ]
+      - [ 0x93, 0x02 ]
+      - [ 0x94, 0xE1 ]
+      - [ 0x95, 0x00 ]
+      - [ 0x96, 0x00 ]
+      - [ 0x97, 0x00 ]
+      - [ 0x98, 0x48 ]
+      - [ 0x99, 0x00 ]
+      - [ 0x9A, 0x0B ]
+      - [ 0x9B, 0x02 ]
+      - [ 0x9C, 0xE3 ]
+      - [ 0x9D, 0x00 ]
+      - [ 0x9E, 0x00 ]
+      - [ 0x9F, 0x00 ]
+      - [ 0xA0, 0x48 ]
+      - [ 0xA1, 0x00 ]
+      - [ 0xA2, 0x04 ]
+      - [ 0xA3, 0x02 ]
+      - [ 0xA4, 0xDC ]
+      - [ 0xA5, 0x00 ]
+      - [ 0xA6, 0x00 ]
+      - [ 0xA7, 0x00 ]
+      - [ 0xA8, 0x48 ]
+      - [ 0xA9, 0x00 ]
+      - [ 0xAA, 0x06 ]
+      - [ 0xAB, 0x02 ]
+      - [ 0xAC, 0xDE ]
+      - [ 0xAD, 0x00 ]
+      - [ 0xAE, 0x00 ]
+      - [ 0xAF, 0x00 ]
+      - [ 0xB0, 0x48 ]
+      - [ 0xB1, 0x00 ]
+      - [ 0xB2, 0x08 ]
+      - [ 0xB3, 0x02 ]
+      - [ 0xB4, 0xE0 ]
+      - [ 0xB5, 0x00 ]
+      - [ 0xB6, 0x00 ]
+      - [ 0xB7, 0x00 ]
+      - [ 0xB8, 0x48 ]
+      - [ 0xB9, 0x00 ]
+      - [ 0xBA, 0x0A ]
+      - [ 0xBB, 0x02 ]
+      - [ 0xBC, 0xE2 ]
+      - [ 0xBD, 0x00 ]
+      - [ 0xBE, 0x00 ]
+      - [ 0xBF, 0x00 ]
+      - [ 0xC0, 0x12 ]
+      - [ 0xC1, 0xAA ]
+      - [ 0xC2, 0x65 ]
+      - [ 0xC3, 0x74 ]
+      - [ 0xC4, 0x47 ]
+      - [ 0xC5, 0x56 ]
+      - [ 0xC6, 0x00 ]
+      - [ 0xC7, 0x88 ]
+      - [ 0xC8, 0x99 ]
+      - [ 0xC9, 0x33 ]
+      - [ 0xD0, 0x21 ]
+      - [ 0xD1, 0xAA ]
+      - [ 0xD2, 0x65 ]
+      - [ 0xD3, 0x74 ]
+      - [ 0xD4, 0x47 ]
+      - [ 0xD5, 0x56 ]
+      - [ 0xD6, 0x00 ]
+      - [ 0xD7, 0x88 ]
+      - [ 0xD8, 0x99 ]
+      - [ 0xD9, 0x33 ]
+      - [ 0xF3, 0x01 ]
+      - [ 0xF0, 0x00 ]
+      - [ 0xF0, 0x01 ]
+      - [ 0xF1, 0x01 ]
+      - [ 0xA0, 0x0B ]
+      - [ 0xA3, 0x2A ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x2B ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x2C ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x2D ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x2E ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x2F ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x30 ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x31 ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x32 ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA3, 0x33 ]
+      - [ 0xA5, 0xC3 ]
+      - delay 1ms
+      - [ 0xA0, 0x09 ]
+      - [ 0xF1, 0x10 ]
+      - [ 0xF0, 0x00 ]
+      - [ 0x2A, 0x00, 0x00, 0x01, 0x67 ]
+      - [ 0x2B, 0x01, 0x68, 0x01, 0x68 ]
+      - [ 0x4D, 0x00 ]
+      - [ 0x4E, 0x00 ]
+      - [ 0x4F, 0x00 ]
+      - [ 0x4C, 0x01 ]
+      - delay 10ms
+      - [ 0x4C, 0x00 ]
+      - [ 0x2A, 0x00, 0x00, 0x01, 0x67 ]
+      - [ 0x2B, 0x00, 0x00, 0x01, 0x67 ]
+      - [ 0x3A, 0x55 ]
+      - [ 0x21, 0x00 ]
+      - [ 0x11, 0x00 ]
+      - delay 120ms
+      - [ 0x29, 0x00 ]
+
     pages:
       - id: idle_page
         lambda: |-
           it.fill(id(idle_color));
+          if (id(ota_active)) {
+            it.filled_circle(290, 310, 3, id(active_ota_color));
+          }
+          if (id(mic_muted)) {
+            it.filled_circle(290, 50, 3, id(active_mute_color));
+          }
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_idle), ImageAlign::CENTER);
           id(draw_timer_timeline).execute();
           id(draw_active_timer_widget).execute();
@@ -777,24 +1242,24 @@ display:
         lambda: |-
           it.fill(id(thinking_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_thinking), ImageAlign::CENTER);
-          it.filled_rectangle(20 , 20 , 280 , 30 , Color::WHITE );
-          it.rectangle(20 , 20 , 280 , 30 , Color::BLACK );
-          it.printf(30, 25, id(font_request), Color::BLACK, "%s", id(text_request).state.c_str());
+          it.filled_rectangle(55 , 70 , 250 , 30 , Color::WHITE );
+          it.rectangle(55 , 70 , 250 , 30 , Color::BLACK );
+          it.printf(65, 75, id(font_request), Color::BLACK, "%s", id(text_request).state.c_str());
           id(draw_timer_timeline).execute();
       - id: replying_page
         lambda: |-
           it.fill(id(replying_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_replying), ImageAlign::CENTER);
-          it.filled_rectangle(20 , 20 , 280 , 30 , Color::WHITE );
-          it.rectangle(20 , 20 , 280 , 30 , Color::BLACK );
-          it.filled_rectangle(20 , 190 , 280 , 30 , Color::WHITE );
-          it.rectangle(20 , 190 , 280 , 30 , Color::BLACK );
-          it.printf(30, 25, id(font_request), Color::BLACK, "%s", id(text_request).state.c_str());
-          it.printf(30, 195, id(font_response), Color::BLACK, "%s", id(text_response).state.c_str());
+          it.filled_rectangle(55 , 70 , 250 , 30 , Color::WHITE );
+          it.rectangle(55 , 70 , 250 , 30 , Color::BLACK );
+          it.filled_rectangle(55 , 275 , 250 , 30 , Color::WHITE );
+          it.rectangle(55 , 275 , 250 , 30 , Color::BLACK );
+          it.printf(65, 75, id(font_request), Color::BLACK, "%s", id(text_request).state.c_str());
+          it.printf(65, 280, id(font_response), Color::BLACK, "%s", id(text_response).state.c_str());
           id(draw_timer_timeline).execute();
       - id: timer_finished_page
         lambda: |-
-          it.fill(id(idle_color));
+          it.fill(id(timer_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_timer_finished), ImageAlign::CENTER);
       - id: error_page
         lambda: |-
@@ -815,3 +1280,37 @@ display:
           it.fill(Color::BLACK);
           id(draw_timer_timeline).execute();
           id(draw_active_timer_widget).execute();
+
+touchscreen:
+  platform: cst816
+  id: touch
+  interrupt_pin: GPIO4
+  reset_pin: 
+    pca9554: ext_io
+    number: 0
+  i2c_id: bus_b
+  address: 0x15
+  display: main_display
+  skip_probe: true
+
+  on_touch:
+  - if:
+      condition:
+        - not:
+          - microphone.is_muted:
+      then:      
+        - if:
+            condition:
+              - voice_assistant.is_running
+            then:
+              - voice_assistant.stop:
+            else:
+              - voice_assistant.start:
+#    - lambda: |-
+#          ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+#              touch.x,
+#              touch.y,
+#              touch.x_raw,
+#              touch.y_raw
+#              );
+
