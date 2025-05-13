@@ -9,7 +9,7 @@ substitutions:
   thinking_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/thinking_320_240.png
   replying_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/replying_320_240.png
   error_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/error_320_240.png
-  timer_finished_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/timer_finished_320_240.png
+  timer_finished_illustration_file: https://raw.githubusercontent.com/wizmo2/wake-word-voice-assistants/add-waveshare-touch/casita/timer_finished_320_240_r.png
 
   loading_illustration_background_color: "000000"
   idle_illustration_background_color: "000000"
@@ -37,7 +37,7 @@ substitutions:
   # for Greek use "Noto Sans" for other languages use a compatible font family
   font_family: Figtree
 
-  #micro_wake_word_model: okay_nabu
+  micro_wake_word_model: okay_nabu
 
 esphome:
   name: ${name}
@@ -49,6 +49,19 @@ esphome:
     then:
       - delay: 0.4s
       - script.execute: draw_display
+      - if:
+          condition:
+            lambda: 'return id(auto_off).state > 0;'
+          then:
+            - light.turn_on: led  
+      - if:
+          condition:
+            lambda: 'return id(auto_sleep).state > 0;'
+          then:
+            - lambda: |-
+               id(sleep_0).set_run_duration(id(auto_sleep).state * 60000);
+            - deep_sleep.allow: sleep_0
+            - logger.log: 'enabled deep_sleep'
       - component.update: batpercent
       - delay: 30s
       - if:
@@ -92,6 +105,7 @@ ota:
     id: ota_esphome
     on_begin:
       then:
+        - deep_sleep.prevent: sleep_0
         - logger.log: "OTA started!"
         - lambda: |-
             id(ota_active) = true;
@@ -133,6 +147,14 @@ time:
         # ... and update the RTC when the synchronization was successful
         pcf85063.write_time:
 
+deep_sleep:
+  id: sleep_0
+  #run_duration: !lambda 'return id(auto_sleep).state*60000;'
+  wakeup_pin: 
+    number: GPIO4
+    inverted: true
+    allow_other_uses: true
+
 pca9554:
   - id: ext_io
     i2c_id: bus_a
@@ -144,7 +166,7 @@ button:
 
 number:
   - platform: template
-    name: Auto Off
+    name: "Screen Off"
     id: auto_off
     optimistic: true
     restore_value: true
@@ -152,6 +174,20 @@ number:
     max_value: 300
     step: 1
     unit_of_measurement: s
+    icon: 'mdi:television-off'
+    disabled_by_default: true
+    initial_value: 0
+
+  - platform: template
+    name: "Auto Sleep"
+    id: auto_sleep
+    optimistic: true
+    restore_value: true
+    min_value: -1
+    max_value: 300
+    step: 1
+    unit_of_measurement: min
+    icon: 'mdi:sleep'
     disabled_by_default: true
     initial_value: 0
 
@@ -202,7 +238,6 @@ sensor:
           max_value: 100
           ignore_out_of_range: false
 
-
 binary_sensor:
   - platform: gpio
     pin:
@@ -215,24 +250,7 @@ binary_sensor:
           - ON for at most 500ms
           - OFF for at least 200ms
         then:
-          - if:
-              condition: 
-                - switch.is_on: timer_ringing
-              then:
-                - switch.turn_off: timer_ringing
-              else: 
-                - if:
-                    condition:
-                      - not:
-                        - microphone.is_muted:
-                    then:      
-                      - if:
-                          condition:
-                            - voice_assistant.is_running
-                          then:
-                            - voice_assistant.stop:
-                          else:
-                            - voice_assistant.start:
+          - script.execute: press_to_talk
 
       - timing:
           - ON for at most 500ms
@@ -253,39 +271,30 @@ binary_sensor:
                     id: mic_muted
                     value: 'true'
           - script.execute: draw_display
+
+      - timing:
+          - ON for at least 3s
+          - OFF for at most 400ms
+        then:
+          - deep_sleep.enter: sleep_0
+
       - timing:
           - ON for at least 10s
-        then:
+        then:         
           - button.press: factory_reset_btn
 
   - platform: touchscreen
     name: Touch Button
     id: touch_button
     touchscreen_id: touch
+    icon: 'mdi:gesture-tap-button'
     x_min: 100
     x_max: 275
     y_min: 100
     y_max: 275
     on_press: 
       then:
-        - logger.log: Touch Button Pressed
-        - if:
-            condition: 
-              - switch.is_on: timer_ringing
-            then:
-              - switch.turn_off: timer_ringing
-        - if:
-            condition:
-              - not:
-                - microphone.is_muted:
-            then:      
-              - if:
-                  condition:
-                    - voice_assistant.is_running
-                  then:
-                    - voice_assistant.stop:
-                  else:
-                    - voice_assistant.start:
+        - script.execute: press_to_talk
     page_id: idle_page
     #use_raw: true
 
@@ -368,24 +377,23 @@ media_player:
     on_announcement:
       - if:
           condition:
-            microphone.is_capturing:
-          then:
-            - script.execute: stop_voice_assistant
-      - if:
-          condition:
             not:
               voice_assistant.is_running:
           then:
+            - logger.log: "MP va is not running"
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
             - script.execute: draw_display
     on_idle:
+      - logger.log: "MP is idle"
       - script.execute: start_voice_assistant
       - script.execute: draw_display
+      - deep_sleep.allow: sleep_0
+    on_play:
+      - deep_sleep.prevent: sleep_0
 
 micro_wake_word:
   models:
-    - okay_nabu
-    - alexa
+    - ${micro_wake_word_model}
   on_wake_word_detected:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
@@ -399,6 +407,7 @@ voice_assistant:
   auto_gain: 31dBFS
   volume_multiplier: 2.0 # 8.0
   on_listening:
+    - deep_sleep.prevent: sleep_0
     - logger.log: "VA listening"
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
@@ -410,7 +419,7 @@ voice_assistant:
     - script.execute: draw_display
     - light.turn_on: led 
   on_stt_vad_end:
-    - logger.log: "VA sta_vlad_end"
+    - logger.log: "VA stt_vad_end"
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
@@ -420,7 +429,7 @@ voice_assistant:
         state: !lambda return x;
     - script.execute: draw_display
   on_tts_start:
-    - logger.log: "VA stt_start"
+    - logger.log: "VA tts_start"
     - text_sensor.template.publish:
         id: text_response
         state: !lambda return x;
@@ -434,13 +443,7 @@ voice_assistant:
               media_player.is_announcing:
           - not:
               voice_assistant.is_running:
-    - if:
-        condition:
-          switch.is_off: mute
-        then:
-          - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
-        else:
-          - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+    - script.execute: set_idle_mode
     - script.execute: draw_display
     - if:
         condition:
@@ -459,38 +462,26 @@ voice_assistant:
           - lambda: id(voice_assistant_phase) = ${voice_assist_error_phase_id};
           - script.execute: draw_display
           - delay: 1s
-          - if:
-              condition:
-                switch.is_off: mute
-              then:
-                - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
-              else:
-                - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+          - script.execute: set_idle_mode
           - script.execute: draw_display
   on_client_connected:
-    - logger.log: "VA connect"
     - lambda: id(init_in_progress) = false;
     - script.execute: start_voice_assistant
     - script.execute: draw_display
   on_client_disconnected:
-    - logger.log: "VA disconnect"
     - script.execute: stop_voice_assistant
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
   on_timer_started:
-    - logger.log: "VA started"
     - wait_until:
         media_player.is_announcing:
     - voice_assistant.stop:
     - script.execute: draw_display
   on_timer_cancelled:
-    - logger.log: "VA timer_cancel"
     - script.execute: draw_display
   on_timer_updated:
-    - logger.log: "VA timer_update"
     - script.execute: draw_display
   on_timer_tick:
-    - logger.log: "VA timer_tick"
     - if:
         condition:
           not:
@@ -498,7 +489,6 @@ voice_assistant:
         then:
           - script.execute: draw_display
   on_timer_finished:
-    - logger.log: "VA timer_finish"
     - switch.turn_on: timer_ringing
     - wait_until:
         media_player.is_announcing:
@@ -690,29 +680,37 @@ script:
             - voice_assistant.stop:
             - micro_wake_word.stop:
 
+  - id: set_idle_mode
+    then:
+      - if:
+          condition:
+            switch.is_off: mute
+          then:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
+          else:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+  
+  - id: press_to_talk
+    then:
+      - if:
+          condition: 
+            - switch.is_on: timer_ringing
+          then:
+            - switch.turn_off: timer_ringing
+          else:
+            - script.execute: stop_voice_assistant
+            - if:
+                condition:
+                  - not:
+                    - microphone.is_muted:
+                then:      
+                  - voice_assistant.start:
+
 switch:
   - platform: gpio
     pin: GPIO18
     id: lcd_TE
   
-  - platform: template
-    name: Speaker Enable
-    restore_mode: RESTORE_DEFAULT_ON
-    entity_category: config
-    disabled_by_default: true
-    turn_on_action:
-      - speaker.mute_off:
-      - globals.set:
-          id: speaker_muted
-          value: 'false'
-      - logger.log: "Speaker unmuted"
-    turn_off_action:
-      - speaker.mute_on:
-      - globals.set:
-          id: speaker_muted
-          value: 'true'
-      - logger.log: "Speaker muted"
-
   - platform: template
     name: Mute
     id: mute
@@ -836,10 +834,6 @@ globals:
     type: bool
     initial_value: 'false'
   - id: mic_muted
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-  - id: speaker_muted
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -1301,7 +1295,9 @@ display:
 touchscreen:
   platform: cst816
   id: touch
-  interrupt_pin: GPIO4
+  interrupt_pin: 
+    number: GPIO4
+    allow_other_uses: true
   reset_pin: 
     pca9554: ext_io
     number: 0
