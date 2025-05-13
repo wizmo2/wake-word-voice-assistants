@@ -61,7 +61,6 @@ esphome:
             - lambda: |-
                id(sleep_0).set_run_duration(id(auto_sleep).state * 60000);
             - deep_sleep.allow: sleep_0
-            - logger.log: 'enabled deep_sleep'
       - component.update: batpercent
       - delay: 30s
       - if:
@@ -295,8 +294,9 @@ binary_sensor:
     on_press: 
       then:
         - script.execute: press_to_talk
-    page_id: idle_page
-    #use_raw: true
+    pages:
+      - idle_page
+      - timer_finished_page
 
 output:
   - platform: ledc
@@ -380,11 +380,9 @@ media_player:
             not:
               voice_assistant.is_running:
           then:
-            - logger.log: "MP va is not running"
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
             - script.execute: draw_display
     on_idle:
-      - logger.log: "MP is idle"
       - script.execute: start_voice_assistant
       - script.execute: draw_display
       - deep_sleep.allow: sleep_0
@@ -408,7 +406,7 @@ voice_assistant:
   volume_multiplier: 2.0 # 8.0
   on_listening:
     - deep_sleep.prevent: sleep_0
-    - logger.log: "VA listening"
+    - logger.log: "ASSIST listening"
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_phase_id};
     - text_sensor.template.publish:
         id: text_request
@@ -419,24 +417,24 @@ voice_assistant:
     - script.execute: draw_display
     - light.turn_on: led 
   on_stt_vad_end:
-    - logger.log: "VA stt_vad_end"
+    - logger.log: "ASSIST stt_vad_end"
     - lambda: id(voice_assistant_phase) = ${voice_assist_thinking_phase_id};
     - script.execute: draw_display
   on_stt_end:
-    - logger.log: "VA stt_end"
+    - logger.log: "ASSIST stt_end"
     - text_sensor.template.publish:
         id: text_request
         state: !lambda return x;
     - script.execute: draw_display
   on_tts_start:
-    - logger.log: "VA tts_start"
+    - logger.log: "ASSIST tts_start"
     - text_sensor.template.publish:
         id: text_response
         state: !lambda return x;
     - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
     - script.execute: draw_display
   on_end:
-    - logger.log: "VA end"
+    - logger.log: "ASSIST end"
     - wait_until:
         and:
           - not:
@@ -454,7 +452,6 @@ voice_assistant:
         then:
           - micro_wake_word.start:
   on_error:
-    - logger.log: "VA error"
     - if:
         condition:
           lambda: return !id(init_in_progress);
@@ -710,7 +707,7 @@ switch:
   - platform: gpio
     pin: GPIO18
     id: lcd_TE
-  
+
   - platform: template
     name: Mute
     id: mute
