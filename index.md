@@ -2,7 +2,7 @@
 title: "ESP32-S3-Touch voice assistant"
 product_name: ESP32-S3-TOUCH
 device_name_entry: ESP32-S3-TOUCH
-config_link: /voice_control/s3_box_voice_assistant/#to-delete-the-configuration-from-esphome
+config_link: https://www.home-assistant.io/voice_control/s3_box_voice_assistant/#to-delete-the-configuration-from-esphome
 related:
   - docs: /voice_control/troubleshooting/
     title: General troubleshooting section for Assist
@@ -26,7 +26,7 @@ This tutorial will guide you to turn an ESP32-S3-TOUCK-1.85IN into a Home Assist
 ## Prerequisites
 
 - Home Assistant 2025.2 or later, installed with the Home Assistant Operating System. If you do not have Home Assistant installed yet, refer to the [installation page](/installation/) for instructions.
-- [Home Assistant Cloud](/voice_control/voice_remote_cloud_assistant/) or a manually configured [Assist Pipeline](/voice_control/voice_remote_local_assistant)
+- [Home Assistant Cloud](https://www.home-assistant.io/voice_control/voice_remote_cloud_assistant/) or a manually configured [Assist Pipeline](https://www.home-assistant.io/voice_control/voice_remote_local_assistant)
 - The password to your 2.4&nbsp;GHz Wi-Fi network
 - Chrome or Edge browser on a desktop (not Android/iOS)
 - One of the WaveShare ESP32-S3-Touch-LCD-1.85C-BOX with Speaker:
@@ -71,17 +71,17 @@ Before you can use this device with Home Assistant, you need to install a bit of
     4. This opens the **My** link to Home Assistant.
        - If you have not used My Home Assistant before, you will need to configure it. If your Home Assistant URL is not accessible on `http://homeassistant.local:8123`, replace it with the URL to your Home Assistant instance.
        - Open the link.
-       ![Open My link](/images/assist/esp32-atom-flash-06.png)
+       ![Open My link](https://www.home-assistant.io/images/assist/esp32-atom-flash-06.png)
     5. Select **OK**.
 
-       ![Set up ESPHome](/images/assist/esp32-atom-flash-07.png)
+       ![Set up ESPHome](https://www.home-assistant.io/images/assist/esp32-atom-flash-07.png)
     6. To add the newly discovered device, select the ESP32-S3-TOUCH from the list.
        - Add your ESP32-S3-TOUCH to a room and select **Finish**.
     7. You should now see the **ESPHome** integration.
-       ![New ESPHome device discovered](/images/assist/m5stack-atom-echo-discovered3.png)
+       ![New ESPHome device discovered](https://www.home-assistant.io/images/assist/m5stack-atom-echo-discovered3.png)
 
     8. Select the **ESPHome** integration. Under **Devices**, you should see the **ESP32-S3-TOUCH** listed.
-        ![ESP32-S3-TOUCH discovered](/images/assist/s32-s3-touch-discovered.png)
+        ![ESP32-S3-TOUCH discovered](https://www.home-assistant.io/images/assist/s32-s3-touch-discovered.png)
 
         - Your ESP32-S3-TOUCH is connected to Home Assistant over Wi-Fi. You can now move it to any place in your home with a USB power supply.
 
@@ -89,7 +89,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
 
 ## Checking wake word settings
 
-1. Make sure your assistant has [wake word enabled](/voice_control/install_wake_word_add_on/), using "OK Nabu".
+1. Make sure your assistant has [wake word enabled](https://www.home-assistant.io/voice_control/install_wake_word_add_on/), using "OK Nabu".
 2. Under **Devices**, on the ESP32-S3-TOUCH* entry, select **Device** to open the device page.
 3. Check the device settings:
     - If you want, you can process the wake word on the ESP32-S3 device, rather than on your Home Assistant server.   (The server is the device where Home Assistant is installed, for example on Home Assistant Green):
@@ -97,23 +97,23 @@ Before you can use this device with Home Assistant, you need to install a bit of
       - Local processing is faster.
       - The wake word is now *Okay Nabu*.
 
-      ![ESP32-S3-TOUCH on device wake word processing](/images/assist/wake_word_engine_location.png)
+      ![ESP32-S3-TOUCH on device wake word processing](https://www.home-assistant.io/images/assist/wake_word_engine_location.png)
 
 4. If you chose on-device wake word, but you do not want to use *Okay Nabu*, you can change the on-device wake word.
    - Currently, *Hey Jarvis* or *Alexa* are the supported alternatives.
-   - To change your wake word, follow the steps in [Customizing the S3-TOUCH with on-device wake words](/voice_control/s3-touch-customize/#customizing-on-device-wake-words-microwakeword).
+   - To change your wake word, follow the steps in [Customizing the S3-TOUCH with on-device wake words](https://www.home-assistant.io/voice_control/s3-touch-customize/#customizing-on-device-wake-words-microwakeword).
 5. Congratulations! You can now voice control Home Assistant via a ESP32 device with a display. Now give some commands.
 
 ## Controlling Home Assistant
 
 1. Say your wake word. For this tutorial, use "OK Nabu", or tap the top-right `IO0` button, or tap the "Cassita" icon on the screen. 
-2. Say a [supported voice command](/voice_control/builtin_sentences/). For example, *Turn on the light*.
+2. Say a [supported voice command](https://www.home-assistant.io/voice_control/builtin_sentences/). For example, *Turn on the light*.
    - Once the intent has been processed, the LED lights up in green and Home Assistant confirms the action.
       - Make sure you’re using the area name exactly as you defined it in Home Assistant.
       - You can also ask a question, such as
           - *Is the front door locked?*
           - *Which lights are on in the living room?*
-3. Your command is not supported? Add your own commands using [a sentence trigger](/voice_control/custom_sentences/).
+3. Your command is not supported? Add your own commands using [a sentence trigger](https://www.home-assistant.io/voice_control/custom_sentences/).
 
 ## Turning off microphone or screen
 
@@ -123,7 +123,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
       - Enable **Mute**.
       - The screen of the ESP32-S3-TOUCH will turn off, too.
 
-      ![Toggle to enable/disable Mute](/images/assist/wake_word_disable.png)
+      ![Toggle to enable/disable Mute](https://www.home-assistant.io/images/assist/wake_word_disable.png)
 
 2. If you want to just use the wake word, but do not want to use the screen, you can enable the auto screen timeout.
    - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
@@ -131,7 +131,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
      - If you have not Enabled the function, Press "**Show All**" and enable "**Screen Off**" in the settings
      - Set a "**Screen Off**" time higher than 0 seconds.
 
-      ![Toggle to enable/disable wake word](/images/assist/s3-touch-disable-screen.png)
+      ![Toggle to enable/disable wake word](https://www.home-assistant.io/images/assist/s3-touch-disable-screen.png)
 ## Extending the battery life
 
 1. To put the unit into sleep mode
@@ -143,7 +143,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
      - If you have not Enabled the function, Press "**Show All**" and enable "**Auto Sleep**" in the settings
      - Set a "**Auto Sleep**" time higher than 0 seconds.
 
-      ![Toggle to enable/disable wake word](/images/assist/s3-touch-enable-sleep.png)
+      ![Toggle to enable/disable wake word](https://www.home-assistant.io/images/assist/s3-touch-enable-sleep.png)
 
 3. To exit sleep mode, simply tap the screen.
 
