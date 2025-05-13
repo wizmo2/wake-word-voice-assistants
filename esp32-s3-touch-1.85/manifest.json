@@ -1,20 +1,19 @@
 {
   "name": "esphome.voice-assistant",
-  "version": "25.2.1",
+  "version": "25.5.0",
   "home_assistant_domain": "esphome",
   "new_install_prompt_erase": false,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "ota": {
-        "path": "25.2.1/esp32-s3-touch-1.85-esp32s3.ota.bin",
-        "md5": "8d910b75f61ab52484728e155ed2e85b",
-        "summary": "## What's Changed\r\n* Bump esphome/workflows from 2024.11.1 to 2024.11.3 by @dependabot in https://github.com/esphome/wake-word-voice-assistants/pull/37\r\n* Bump esphome/workflows from 2024.11.3 to 2024.12.0 by @dependabot in https://github.com/esphome/wake-word-voice-assistants/pull/40\r\n* Bump esphome/workflows from 2024.12.0 to 2025.1.0 by @dependabot in https://github.com/esphome/wake-word-voice-assistants/pull/55\r\n* define esp-idf version to 4.4.8  by @BigBobbas in https://github.com/esphome/wake-word-voice-assistants/pull/46\r\n* [CI] Bump ESPHome version used for builds by @kbx81 in https://github.com/esphome/wake-word-voice-assistants/pull/64\r\n* [S3-Box-3] Use new media player to support announcements by @kahrendt in https://github.com/esphome/wake-word-voice-assistants/pull/61\r\n* [S3-Box-Lite] Use new media player to support announcements by @kahrendt in https://github.com/esphome/wake-word-voice-assistants/pull/62\r\n* [S3-Box] Use new media player to support announcements by @kahrendt in https://github.com/esphome/wake-word-voice-assistants/pull/63\r\n* [M5 Echo] Use new media player to support announcements by @kahrendt in https://github.com/esphome/wake-word-voice-assistants/pull/60\r\n* [esp32-s3-box-3] Remove idf version overrides by @jesserockz in https://github.com/esphome/wake-word-voice-assistants/pull/67\r\n* Set min volume on media player for s3-boxes by @jesserockz in https://github.com/esphome/wake-word-voice-assistants/pull/68\r\n\r\n## New Contributors\r\n* @kbx81 made their first contribution in https://github.com/esphome/wake-word-voice-assistants/pull/64\r\n* @kahrendt made their first contribution in https://github.com/esphome/wake-word-voice-assistants/pull/61\r\n\r\n**Full Changelog**: https://github.com/esphome/wake-word-voice-assistants/compare/24.11.1...25.2.1",
-        "release_url": "https://github.com/esphome/wake-word-voice-assistants/releases/tag/25.2.1"
+        "path": "25.5.0/esp32-s3-touch.ota.bin",
+        "summary": "## What's Changed\r\n* Initial Release",
+        "release_url": "https://github.com/esphome/wake-word-voice-assistants/releases/tag/25.5.0"
       },
       "parts": [
         {
-          "path": "25.2.1/esp32-s3-box-3-esp32s3.factory.bin",
+          "path": "25.5.0/esp32-s3-box-3-esp32s3.factory.bin",
           "offset": 0
         }
       ]
