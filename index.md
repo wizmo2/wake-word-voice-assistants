@@ -4,15 +4,15 @@ product_name: ESP32-S3-TOUCH
 device_name_entry: ESP32-S3-TOUCH
 config_link: https://www.home-assistant.io/voice_control/s3_box_voice_assistant/#to-delete-the-configuration-from-esphome
 related:
-  - docs: /voice_control/troubleshooting/
+  - docs: https://www.home-assistant.io/voice_control/troubleshooting/
     title: General troubleshooting section for Assist
-  - docs: /voice_control/troubleshooting_the_s3_touch/
+  - docs: https://www.home-assistant.io/voice_control/troubleshooting_the_s3_touch/
     title: Troubleshooting the ESP32-S3-TOUCH
-  - docs: /common-tasks/os/#configuring-access-to-files
+  - docs: https://www.home-assistant.io/common-tasks/os/#configuring-access-to-files
     title: Access to your configuration files
-  - docs: /voice_control/about_wake_word/
+  - docs: https://www.home-assistant.io/voice_control/about_wake_word/
     title: Enable wake word
-  - docs: /voice_control/s3-touch-customize/#customizing-on-device-wake-words-microwakeword
+  - docs: https://www.home-assistant.io/voice_control/s3-touch-customize/#customizing-on-device-wake-words-microwakeword
     title: Customizing the S3-TOUCH with on-device wake words
   - url: https://esphome.io/projects/index.html
     title: ESPHome projects page
@@ -20,7 +20,7 @@ related:
 
 This tutorial will guide you to turn an ESP32-S3-TOUCK-1.85IN into a Home Assistant voice assistant. Note, the term ESP32-S3-TOUCH may be used to refer to any of the 3 product variants.
 
-<lite-youtube videoid="erf7HqTwCGs" videotitle="Okay Nabu! Open-source voice assistant running on an WaveShare ESP32-S3-Touch
+<lite-youtube videoid="erf7HqTwCGs" videotitle="Okay Nabu! Open-source voice assistant running on an WaveShare ESP32-S3-Box
 "></lite-youtube>
 
 ## Prerequisites
