@@ -114,7 +114,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
 ## Turning off microphone or screen
 
 1. If you do not want to Assist to listen to you for a while, you can turn off the microphone.
-   - Double-click the top-right `IO01 button, or go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
+   - Double-click the top-right `IO01 button, or go to my integrations title="**Settings** > **Devices & Services**" and select the **ESPHome** integration.
       - Under **ESP32-S3-TOUCH**, select **1 device**.
       - Enable **Mute**.
       - The screen of the ESP32-S3-TOUCH will turn off, too.
@@ -122,7 +122,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
       ![Toggle to enable/disable Mute](https://www.home-assistant.io/images/assist/wake_word_disable.png)
 
 2. If you want to just use the wake word, but do not want to use the screen, you can enable the auto screen timeout.
-   - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
+   - Go to my integrations title="**Settings** > **Devices & Services**" and select the **ESPHome** integration.
      - Under **ESP32-S3-TOUCH**, select **1 device**.
      - If you have not Enabled the function, Press "**Show All**" and enable "**Screen Off**" in the settings
      - Set a "**Screen Off**" time higher than 0 seconds.
@@ -134,7 +134,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
    - Press the top-right `IO0` button for 2 seconds and release 
 
 2. If you want to extend the battery life, you can enable the auto sleep timeout.
-   - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
+   - Go to my integrations title="**Settings** > **Devices & Services**" and select the **ESPHome** integration.
      - Under **ESP32-S3-TOUCH**, select **1 device**.
      - If you have not Enabled the function, Press "**Show All**" and enable "**Auto Sleep**" in the settings
      - Set a "**Auto Sleep**" time higher than 0 seconds.
