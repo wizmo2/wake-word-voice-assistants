@@ -46,10 +46,10 @@ Before you can use this device with Home Assistant, you need to install a bit of
        - If your browser does not support web serial, you will see a warning message indicating this instead of a button. (**may not work yet!**)
 
            <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-           <esp-web-install-button manifest="https://github.com/wizmo2/wake-word-voice-assistants/raw/add-waveshare-touch/esp32-s3-touch/manifest.json"></esp-web-install-button>
+           <esp-web-install-button manifest="https://wizmo2.github.io/wake-word-voice-assistants/esp32-s3-touch-1.85/manifest.json"></esp-web-install-button>
 
        - **For advanced users**: The configuration files are available on GitHub:
-         - [ESP32-S3-TOUCH config on GitHub](https://github.com/wizmo2/wake-word-voice-assistants/blob/add-waveshare-touch/esp32-s3-touch-1.85/esp32-s3-touch-1.85.yaml)
+         - [ESP32-S3-TOUCH config on GitHub](https://wizmo2.github.io/wake-word-voice-assistants/esp32-s3-touch-1.85/esp32-s3-touch-1.85.yaml)
 
     2. To connect the ESP32-S3-TOUCH to your computer, follow these steps:
        - In the pop-up window, view the available ports.

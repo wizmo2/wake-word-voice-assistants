@@ -9,7 +9,7 @@
       "ota": {
         "path": "25.5.0/esp32-s3-touch.ota.bin",
         "summary": "## What's Changed\r\n* Initial Release",
-        "release_url": "https://github.com/esphome/wake-word-voice-assistants/releases/tag/25.5.0"
+        "release_url": "https://wizmo2.github.io/wake-word-voice-assistants"
       },
       "parts": [
         {
