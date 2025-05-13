@@ -37,8 +37,6 @@ This tutorial will guide you to turn an ESP32-S3-TOUCK-1.85IN into a Home Assist
 
 Before you can use this device with Home Assistant, you need to install a bit of software on it.
 
-{% tabbed_block %}
-
 - title: Using the ESP32-S3-TOUCH
   content: |
 
@@ -84,8 +82,6 @@ Before you can use this device with Home Assistant, you need to install a bit of
         ![ESP32-S3-TOUCH discovered](https://www.home-assistant.io/images/assist/s32-s3-touch-discovered.png)
 
         - Your ESP32-S3-TOUCH is connected to Home Assistant over Wi-Fi. You can now move it to any place in your home with a USB power supply.
-
-{% endtabbed_block %}
 
 ## Checking wake word settings
 
