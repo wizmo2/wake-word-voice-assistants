@@ -8,7 +8,7 @@ packages:
       on_client_connected:
         - wait_until:
             not: ble.enabled
-  esp32-s3-box: !include esp32-s3-box.yaml
+  esp32-s3-box: !include esp32-s3-touch-1.85.yaml
 
 esphome:
   project:
@@ -28,7 +28,7 @@ update:
 http_request:
 
 dashboard_import:
-  package_import_url: github://esphome/firmware/wake-word-voice-assistant/esp32-s3-box.yaml@main
+  package_import_url: github://wizmo2/firmware/wake-word-voice-assistant/esp32-s3-touch-1.85.yaml@main
 
 wifi:
   on_connect:
