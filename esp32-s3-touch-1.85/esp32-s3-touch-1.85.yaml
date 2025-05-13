@@ -273,7 +273,7 @@ binary_sensor:
           - script.execute: draw_display
 
       - timing:
-          - ON for at least 3s
+          - ON for at least 2s
           - OFF for at most 400ms
         then:
           - deep_sleep.enter: sleep_0

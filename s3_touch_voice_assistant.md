@@ -51,7 +51,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
            <esp-web-install-button manifest="https://firmware.esphome.io/wake-word-voice-assistant/esp32-s3-touch/manifest.json"></esp-web-install-button>
 
        - **For advanced users**: The configuration files are available on GitHub:
-         - [ESP32-S3-TOUCH config on GitHub](https://github.com/esphome/wake-word-voice-assistants/blob/main/esp32-s3-touch/esp32-s3-touch.yaml)
+         - [ESP32-S3-TOUCH config on GitHub](https://github.com/wizmo2/wake-word-voice-assistants/blob/add-waveshare-touch/esp32-s3-touch-1.85/esp32-s3-touch-1.85.yaml)
 
     2. To connect the ESP32-S3-TOUCH to your computer, follow these steps:
        - In the pop-up window, view the available ports.
@@ -106,7 +106,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
 
 ## Controlling Home Assistant
 
-1. Say your wake word. For this tutorial, use "OK Nabu".
+1. Say your wake word. For this tutorial, use "OK Nabu", or tap the top-right `IO0` button, or tap the "Cassita" icon on the screen. 
 2. Say a [supported voice command](/voice_control/builtin_sentences/). For example, *Turn on the light*.
    - Once the intent has been processed, the LED lights up in green and Home Assistant confirms the action.
       - Make sure you’re using the area name exactly as you defined it in Home Assistant.
@@ -118,18 +118,39 @@ Before you can use this device with Home Assistant, you need to install a bit of
 ## Turning off microphone or screen
 
 1. If you do not want to Assist to listen to you for a while, you can turn off the microphone.
-   - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
+   - Double-click the top-right `IO01 button, or go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
       - Under **ESP32-S3-TOUCH**, select **1 device**.
       - Enable **Mute**.
       - The screen of the ESP32-S3-TOUCH will turn off, too.
 
       ![Toggle to enable/disable Mute](/images/assist/wake_word_disable.png)
-2. If you want to just use the wake word, but do not want to use the screen, you can turn it off.
+
+2. If you want to just use the wake word, but do not want to use the screen, you can enable the auto screen timeout.
    - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
      - Under **ESP32-S3-TOUCH**, select **1 device**.
-     - Disable **Screen**.
+     - If you have not Enabled the function, Press "**Show All**" and enable "**Screen Off**" in the settings
+     - Set a "**Screen Off**" time higher than 0 seconds.
 
       ![Toggle to enable/disable wake word](/images/assist/s3-touch-disable-screen.png)
+## Extending the battery life
+
+1. To put the unit into sleep mode
+   - Press the top-right `IO0` button for 2 seconds and release 
+
+2. If you want to extend the battery life, you can enable the auto sleep timeout.
+   - Go to {% my integrations title="**Settings** > **Devices & Services**" %} and select the **ESPHome** integration.
+     - Under **ESP32-S3-TOUCH**, select **1 device**.
+     - If you have not Enabled the function, Press "**Show All**" and enable "**Auto Sleep**" in the settings
+     - Set a "**Auto Sleep**" time higher than 0 seconds.
+
+      ![Toggle to enable/disable wake word](/images/assist/s3-touch-enable-sleep.png)
+
+3. To exit sleep mode, simply tap the screen.
+
+## Factory reset
+
+1. To reset the device, press the bottom-right `RST` button
+1. To perform a factory reset, press and hold the top-right `IO0` button for 10 seconds.
 
 ## Updating the software on the S3-TOUCH
 
