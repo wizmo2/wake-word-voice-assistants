@@ -76,10 +76,10 @@ Before you can use this device with Home Assistant, you need to install a bit of
     6. To add the newly discovered device, select the ESP32-S3-TOUCH from the list.
        - Add your ESP32-S3-TOUCH to a room and select **Finish**.
     7. You should now see the **ESPHome** integration.
-       ![New ESPHome device discovered](https://www.home-assistant.io/images/assist/m5stack-atom-echo-discovered3.png)
+       ![New ESPHome device discovered](https://www.home-assistant.io/images/assist/m5stack-atom-echo-discovered-33.png)
 
     8. Select the **ESPHome** integration. Under **Devices**, you should see the **ESP32-S3-TOUCH** listed.
-        ![ESP32-S3-TOUCH discovered](https://www.home-assistant.io/images/assist/s32-s3-touch-discovered.png)
+        ![ESP32-S3-TOUCH discovered](https://www.home-assistant.io/images/assist/s32-s3-box-3-discovered.png)
 
         - Your ESP32-S3-TOUCH is connected to Home Assistant over Wi-Fi. You can now move it to any place in your home with a USB power supply.
 
@@ -127,7 +127,7 @@ Before you can use this device with Home Assistant, you need to install a bit of
      - If you have not Enabled the function, Press "**Show All**" and enable "**Screen Off**" in the settings
      - Set a "**Screen Off**" time higher than 0 seconds.
 
-      ![Toggle to enable/disable wake word](https://www.home-assistant.io/images/assist/s3-touch-disable-screen.png)
+      ![Enter the timeout in seconds](https://wizmo2.github.io/wake-word-voice-assistants/images/assist/s3-touch-disable-screen.png)
 ## Extending the battery life
 
 1. To put the unit into sleep mode
@@ -137,9 +137,9 @@ Before you can use this device with Home Assistant, you need to install a bit of
    - Go to my integrations title="**Settings** > **Devices & Services**" and select the **ESPHome** integration.
      - Under **ESP32-S3-TOUCH**, select **1 device**.
      - If you have not Enabled the function, Press "**Show All**" and enable "**Auto Sleep**" in the settings
-     - Set a "**Auto Sleep**" time higher than 0 seconds.
+     - Set an "**Auto Sleep**" time higher than 0 seconds.
 
-      ![Toggle to enable/disable wake word](https://www.home-assistant.io/images/assist/s3-touch-enable-sleep.png)
+      ![Enter the timeout in minutes](https://wizmo2.github.io/wake-word-voice-assistants/images/assist/s3-touch-enable-sleep.png)
 
 3. To exit sleep mode, simply tap the screen.
 
