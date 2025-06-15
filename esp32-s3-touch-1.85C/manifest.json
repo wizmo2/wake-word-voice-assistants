@@ -1,0 +1,22 @@
+{
+  "name": "esphome.voice-assistant",
+  "version": "25.5.0",
+  "home_assistant_domain": "esphome",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "ota": {
+        "path": "25.5.0/esp32-s3-touch.ota.bin",
+        "summary": "## What's Changed\r\n* Initial Release",
+        "release_url": "https://wizmo2.github.io/wake-word-voice-assistants"
+      },
+      "parts": [
+        {
+          "path": "25.5.0/esp32-s3-touch-esp32s3.factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
